@@ -2,15 +2,15 @@ import pandas as pd
 df = pd.read_excel("C:\\Users\\Groot\\Documents\\all data.xlsx", sheet = 1)
 df.replace("?", 0, inplace = True)
 df.fillna(0, inplace = True)
-df.sort_values(["[FGF-2]"], ascending = True, inplace = True)
+df.sort_values(["[EGF]"], ascending = True, inplace = True)
 def drop_x_row(df, x, column):
      df_true_false_values = df[df[column] == x]
      df = df.drop(df_true_false_values.index, axis=0)
      return df
 
 
-df = drop_x_row(df, 0, "[FGF-2]")
-print(df["[FGF-2]"])
+df = drop_x_row(df, 0, "[EGF]")
+print(df["[EGF]"])
 
 def column_to_list(df, col):
 	indeces = list(df.index.values)
@@ -19,7 +19,7 @@ def column_to_list(df, col):
 	for i in range(0, len(df.axes[0])):
 		arr.append(df.ix[indeces[i], col])
 	return arr
-df_list = column_to_list(df, "[FGF-2]")
+df_list = column_to_list(df, "[EGF]")
 def quartile(arr):
 	median_index = int(len(arr)/2) 
 	second_quartile = arr[median_index]
@@ -45,3 +45,6 @@ for i in range(0, len(df_list)):
 	x = categorize(df_list[i], q1, q3)
 	class_values.append(x)
 print(class_values)
+indeces = list(df.index.values)
+for i  in range(0, len(indeces)):
+	print(df.ix[indeces[i], "Sex"])
