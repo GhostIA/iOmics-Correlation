@@ -4,60 +4,92 @@ from MLP import MLP
 import sklearn as sklearn
 import scipy.stats.mstats as sp
 z = 5
-activation = np.tanh(np.log(1 + np.exp(z)))
-generator = MLP(num_inputs = 436, num_outputs = 436, num_hl=75,  num_hlnodes=50, af = activation) #g
-discriminator = MLP(num_inputs = 436 , num_outputs = 1, num_hl=75,  num_hlnodes=50, af = activation) #d
+activation = lambda z: np.tanh(np.log(1 + np.exp(z)))
+generator = MLP(num_inputs = 463, num_outputs = 463, num_hl=75,  num_hlnodes=463, af = activation) #g
+discriminator = MLP(num_inputs = 463 , num_outputs = 1, num_hl=75,  num_hlnodes=463, af = activation) #d
+
+df = pd.read_excel("C:\\Users\\Groot\\Documents\\cleaned_up_cohort.xlsx")
+df1 = df.iloc[:,19:28]#19 to 28
+numpy_matrix = df1.as_matrix()
 
 
 
-
-def train(epochs = 200, *args, K = 1, theta):
-	def mean_vectors(*args):
+def train(matrix, epochs = 200, K = 1):
+	def mean_vectors(matrix):
 		training_list = []
 		vector_sums = []
-		length_of_vectors = []
+		length_of_vectors = matrix.shape[1]
 		average_m = [] 
-		for train_set in args:
-			training_list.append(train_set) #training sets in one
-		for item in training_list:
-			sum = 0
-			length_of_vectors.append(len(item))
-			for i in range(0, len(item)):
-				sum = sum + item[i]
-				vector_sums.append(sum)
-		for i in range(0, len(length_of_vectors)):
-			average = vector_sums[i]/length_of_vectors[i]
+		arr = []
+		for i in range(0, length_of_vectors):
+			arr = matrix[:,i]
+			sum_ = 0
+			for j in range(0, len(arr)):
+				sum_ = sum_ + arr[j]
+			vector_sums.append(sum_)
+			
+		for i in range(0, len(vector_sums)):
+			average = vector_sums[i]/length_of_vectors
 			average_m.append(average)
 		return average_m
-	training_list = []
-	for train_set in args:
-			training_list.append(train_set)
-	m = mean_vectors(*args)
-	cov_matrix = np.cov(*args)
-	noise_prior = np.random.normal(m, cov_matrix)
+
+	training_list = matrix
+	
+	m = mean_vectors(training_list)
+
+
+	cov_matrix = np.cov(matrix.transpose())
+	
+	noise_prior = np.random.multivariate_normal(m, cov_matrix)
 	num_training_sets = len(m)
-	for i in range(0, len(epochs) - 1):
+	
+	print(noise_prior)
+
+
+
+	for i in range(0, epochs - 1):
 		momentum_vectors_g = []
 		momentum_vectors_d = []
+		
 		for j in range(0, K):
-			delta_x = []
+			delta = []
 			J = 0
-			for k in range(0, num_training_sets):
-				a = training_list[j -1]*generator.weight[j]
-				J = J + (np.log(discriminator.predict(training_list)) + (1 - np.log(discriminator.predict((generator.predict(noise_prior))))))
-				for l in range(k, 1):
-					if k == l:
-						for e in range(0, num_training_sets):
-							little_delta = little_delta.append(training_list[e])
-					else:
-						transposed_matrix = (training_list[i] * generator.weight[i -1]).transpose()
-						little_delta[i] = little_delta[i + 1]*transposed_matrix*generator.weight[k]
-				for f in range(0, len(generator.weight[j])):
-					delta_x[k] = (little_delta[k] * training_list[k - 1]).transpose()/discriminator.predict(training_list[i])
-		for f in range(0, len(delta)):
-			momentum_vectors_g[f] = delta_x[f]
-		print(J)
-		delta_z = []
-		for j in range(0, num_training_sets):
-			for k in range(0, len(discriminator.weight)):
-				
+			little_delta = 0
+			for k in range(1,matrix.shape[1]):
+				a = matrix[:,k - 1]
+				z = noise_prior[1]
+				W = generator.weights[k]
+				x = activation(W * a)
+				J = J + (np.log(discriminator.predict(a)) + (1 - np.log(discriminator.predict(generator.predict(z)))))
+			for k in range(463, 1, -1):
+				for l in range(0, len(noise_prior)): 
+					tp = (activation(noise_prior[l] + 0.3))/(2* 0.3)
+				if i == l:
+					little_delta = generator.weights[l]
+				else:
+					little_delta = little_delta + tp * (generator.weights[l] * matrix[:,l - 1]).transpose() * generator.weights[l]
+			for k in range(len(generator.weights), 0, -1):
+				delta_ = (little_delta * matrix[:,l -1])/discriminator.predict(matrix[:,l])
+				delta.append(delta_)
+			for k in range(0, len(delta)):
+				new_momentum = delta[k] * 0.1
+				for e in range(0, len(new_momentum)):
+					momentum_vectors_d.append(new_momentum[e])
+
+		delta_n = []
+		tiny_delta = 0
+		for j in range(0, len(noise_prior)):
+			for k in range(0, len(discriminator.weights)):
+				a = activation((discriminator.weights[k] * noise_prior[j]))
+			for k in range(0, len(discriminator.weights)):
+				tiny_delta = tiny_delta + tp *(discriminator.weights[k] * a).transpose() * discriminator.weights[k]
+				delta_n.append((tiny_delta * a)/(1 - discriminator.predict(generator.predict(a.transpose()))))
+			for k in range(0, len(delta_n)):
+				new_momentum = delta_n[k] * 0.1
+				for e in range(0, len(new_momentum)):
+					momentum_vectors_g.append(new_momentum[e])
+				for e in range(0,len(generator.weights)):
+					generator.weights[e] = generator.weights[e] + 0.1*(delta_n[e]) + 0.1*(momentum_vectors_g[e])
+					print(generator.weights[e])
+	
+train(numpy_matrix)
